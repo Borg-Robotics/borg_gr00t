@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Dev tools
+.venv/
+.vscode/
+.idea/
+.ruff_cache/
+pyrightconfig.json
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Testing
+.coverage
+.pytest_cache/
+
+# Misc
+.DS_Store
+*.swp
+*.log
+wandb/
+
+# Upstream dependency (cloned locally)
+Isaac-GR00T/
+
+# Data
+/data/
+output/
+tmp/

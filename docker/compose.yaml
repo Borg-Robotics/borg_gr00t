@@ -1,0 +1,32 @@
+# Run with:
+# docker compose -f docker/compose.yaml up --build
+# Enter the container with:
+# docker exec -it borg-gr00t bash
+services:
+  borg-gr00t:
+    image: borg-gr00t:dev
+    container_name: borg-gr00t
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
+    runtime: nvidia
+    network_mode: host
+
+    volumes:
+      - ../:/workspace
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities:
+              - gpu
+              - utility
+              - compute
+              - video
+
+    entrypoint: bash
+    stdin_open: true
+    tty: true

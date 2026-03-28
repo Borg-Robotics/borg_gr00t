@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=67", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "borg_gr00t"
+version = "0.1.0"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    # gr00t installed separately via: uv pip install -e Isaac-GR00T[base]
+    # Only list borg-specific extras here
+    "pyzmq",
+    "opencv-python>=4.8",
+    "scikit-learn",
+    "gdown",
+    "tyro",
+]
+
+[project.optional-dependencies]
+dev = ["ruff", "pytest", "pre-commit"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["borg_gr00t*"]
+
+[tool.setuptools.package-data]
+"borg_gr00t.configs" = ["*.json"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["borg_gr00t"]
+exclude = ["__pycache__", ".git", ".venv", "dist"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.ruff.lint.isort]
+case-sensitive = false
+combine-as-imports = true
+force-sort-within-sections = true
+
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib"
