@@ -14,7 +14,7 @@ make format              # ruff check --fix + ruff format
 make run-checks          # ruff check + ruff format --check + pytest
 
 # Install (after cloning Isaac-GR00T/ locally, it's gitignored)
-cd Isaac-GR00T && uv sync --extra base --no-build-isolation --no-install-project && uv pip install -e . --no-deps && cd -
+cd Isaac-GR00T && uv pip install setuptools wheel_stub && uv sync --no-build-isolation --no-install-project --active && uv pip install -e . --no-deps && cd -
 uv pip install -e ".[dev]"
 ```
 

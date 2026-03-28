@@ -26,13 +26,16 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 ENV UV_PROJECT_ENVIRONMENT=/opt/conda/
 
-# Clone Borg fork of gr00t and install via uv sync (reads [tool.uv.sources])
-RUN git clone --depth 1 https://github.com/Borg-Robotics/Isaac-GR00T.git /opt/Isaac-GR00T
+# Clone upstream gr00t and install via uv sync (reads [tool.uv.sources])
+RUN git clone --depth 1 https://github.com/NVIDIA/Isaac-GR00T.git /opt/Isaac-GR00T
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --system setuptools wheel wheel-stub && \
     cd /opt/Isaac-GR00T && \
-    uv sync --extra base --no-build-isolation --no-install-project && \
+    uv sync --no-build-isolation --no-install-project && \
     uv pip install --system -e /opt/Isaac-GR00T --no-deps
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --system flash-attn --no-build-isolation
 
 # Install borg_gr00t
 COPY pyproject.toml /opt/borg_gr00t/pyproject.toml

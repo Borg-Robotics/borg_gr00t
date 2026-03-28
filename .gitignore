@@ -27,9 +27,6 @@ pyrightconfig.json
 *.log
 wandb/
 
-# Upstream dependency (cloned locally)
-Isaac-GR00T/
-
 # Data
 /data/
 output/

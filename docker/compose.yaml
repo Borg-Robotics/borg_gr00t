@@ -11,6 +11,7 @@ services:
       dockerfile: docker/Dockerfile
     runtime: nvidia
     network_mode: host
+    shm_size: "16gb"
 
     volumes:
       - ../:/workspace

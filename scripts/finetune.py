@@ -37,7 +37,7 @@ def main():
     modality_cfg = Path(__file__).resolve().parent.parent / "borg_gr00t" / "modality_config.py"
 
     defaults = {
-        "--embodiment-tag": "new_embodiment",
+        "--embodiment-tag": "NEW_EMBODIMENT",
         "--modality-config-path": str(modality_cfg),
         "--base-model-path": "nvidia/GR00T-N1.6-3B",
     }

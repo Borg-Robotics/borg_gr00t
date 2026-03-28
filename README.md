@@ -14,12 +14,13 @@ BORG robot extensions for [NVIDIA Isaac GR00T N1.6](https://github.com/NVIDIA/Is
 ### Local development
 
 ```bash
-# 1. Clone Borg fork of Isaac-GR00T (into local directory, gitignored)
-git clone https://github.com/Borg-Robotics/Isaac-GR00T.git Isaac-GR00T
+# 1. Clone upstream Isaac-GR00T (into local directory, gitignored)
+git clone https://github.com/NVIDIA/Isaac-GR00T.git Isaac-GR00T
 
 # 2. Install gr00t via uv sync (reads [tool.uv.sources] for correct torch/flash-attn wheels)
 cd Isaac-GR00T
-uv sync --extra base --no-build-isolation --no-install-project
+uv pip install setuptools wheel_stub
+uv sync --no-build-isolation --no-install-project --active
 uv pip install -e . --no-deps
 cd -
 
