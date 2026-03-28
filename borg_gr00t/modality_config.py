@@ -127,3 +127,63 @@ def inject_modality_config_into_checkpoint(checkpoint_dir: str) -> None:
         with open(config_path, "w") as f:
             json.dump(config, f, indent=2)
         print(f"Injected BORG modality config into {config_path}")
+
+
+def inject_statistics_into_checkpoint(checkpoint_dir: str, dataset_path: str) -> None:
+    """Inject BORG normalization statistics into a checkpoint's statistics.json.
+
+    The base model's statistics.json does not contain entries for the BORG
+    embodiment (``new_embodiment``). This reads per-joint statistics from the
+    dataset's ``meta/`` directory, structures them according to the BORG modality
+    config, and merges them into the checkpoint so the model can normalise
+    states and actions at inference time.
+    """
+    import json
+    from pathlib import Path
+
+    stats_path = Path(checkpoint_dir) / "statistics.json"
+    tag = EmbodimentTag.NEW_EMBODIMENT.value
+
+    # Load existing statistics (may come from the base model)
+    if stats_path.exists():
+        with open(stats_path) as f:
+            statistics = json.load(f)
+    else:
+        statistics = {}
+
+    if tag in statistics:
+        return
+
+    # Read raw dataset statistics
+    meta_dir = Path(dataset_path) / "meta"
+    with open(meta_dir / "stats.json") as f:
+        raw_stats = json.load(f)
+    with open(meta_dir / "modality.json") as f:
+        modality_meta = json.load(f)
+
+    # Structure statistics per joint group using the BORG modality config
+    mapping = {"state": "observation.state", "action": "action"}
+    dataset_statistics: dict = {}
+
+    for modality, default_key in mapping.items():
+        dataset_statistics[modality] = {}
+        for joint_key in BORG_MODALITY_CONFIG[modality].modality_keys:
+            meta = modality_meta[modality][joint_key]
+            start_idx = meta["start"]
+            end_idx = meta["end"]
+            actual_key = meta.get("original_key", default_key)
+            dataset_statistics[modality][joint_key] = {
+                stat_type: raw_stats[actual_key][stat_type][start_idx:end_idx]
+                for stat_type in raw_stats[actual_key]
+            }
+
+    # Add relative action statistics if available
+    rel_stats_path = meta_dir / "relative_stats.json"
+    if rel_stats_path.exists():
+        with open(rel_stats_path) as f:
+            dataset_statistics["relative_action"] = json.load(f)
+
+    statistics[tag] = dataset_statistics
+    with open(stats_path, "w") as f:
+        json.dump(statistics, f, indent=2)
+    print(f"Injected BORG statistics into {stats_path}")

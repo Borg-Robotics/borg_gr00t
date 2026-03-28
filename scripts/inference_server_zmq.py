@@ -10,18 +10,19 @@ Run: python scripts/inference_server_zmq.py --server --model-path /path/to/check
 """
 
 import base64
-from dataclasses import dataclass
 import json
 import time
+from dataclasses import dataclass
 
-from borg_gr00t.actions import relative_to_absolute
-from borg_gr00t.embodiment import resolve_embodiment_enum
-from borg_gr00t.modality_config import inject_modality_config_into_checkpoint
 import cv2
-from gr00t.policy.gr00t_policy import Gr00tPolicy
 import numpy as np
 import tyro
 import zmq
+from borg_gr00t.actions import relative_to_absolute
+from borg_gr00t.embodiment import resolve_embodiment_enum
+from borg_gr00t.modality_config import inject_modality_config_into_checkpoint
+
+from gr00t.policy.gr00t_policy import Gr00tPolicy
 
 # Joint names in the order they arrive from the robot (16 total)
 LEFT_ARM_JOINTS = [f"l_arm_pivot_{i}_joint" for i in range(1, 7)]
@@ -43,23 +44,28 @@ NUM_ACTION_JOINTS = len(ACTION_JOINT_ORDER)  # 14
 STATE_TO_ACTION_INDICES = [0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14]
 
 
+CAMERA_KEYS = ["cam_head", "cam_left_wrist", "cam_right_wrist"]
+DEFAULT_FRAME_SHAPE = (480, 640, 3)
+
+
 def decode_observation(obs: dict) -> dict:
     """Decode base64-encoded video and flat joint states into N1.6 observation format."""
     decoded = {"video": {}, "state": {}, "language": {}}
 
-    # --- VIDEO ---
-    if "video.cam_head" in obs:
-        try:
-            frame_bytes = base64.b64decode(obs["video.cam_head"])
-            frame_array = np.frombuffer(frame_bytes, np.uint8)
-            frame = cv2.imdecode(frame_array, cv2.IMREAD_COLOR)
-            # N1.6 expects (B, T, H, W, C)
-            decoded["video"]["cam_head"] = frame[np.newaxis, np.newaxis, ...]
-        except Exception as e:
-            print(f"Failed to decode video.cam_head: {e}")
-            decoded["video"]["cam_head"] = np.zeros((1, 1, 720, 1280, 3), dtype=np.uint8)
-    else:
-        decoded["video"]["cam_head"] = np.zeros((1, 1, 720, 1280, 3), dtype=np.uint8)
+    # --- VIDEO (all 3 cameras) ---
+    for cam_key in CAMERA_KEYS:
+        obs_key = f"video.{cam_key}"
+        if obs_key in obs:
+            try:
+                frame_bytes = base64.b64decode(obs[obs_key])
+                frame_array = np.frombuffer(frame_bytes, np.uint8)
+                frame = cv2.imdecode(frame_array, cv2.IMREAD_COLOR)
+                decoded["video"][cam_key] = frame[np.newaxis, np.newaxis, ...]
+            except Exception as e:
+                print(f"Failed to decode {obs_key}: {e}")
+                decoded["video"][cam_key] = np.zeros((1, 1, *DEFAULT_FRAME_SHAPE), dtype=np.uint8)
+        else:
+            decoded["video"][cam_key] = np.zeros((1, 1, *DEFAULT_FRAME_SHAPE), dtype=np.uint8)
 
     # --- STATE ---
     if "observation.state" in obs:
@@ -187,10 +193,12 @@ def main(args: ArgsConfig):
                 socket.send_json({"error": str(e)})
 
     elif args.client:
+        dummy_frame = cv2.imencode(".jpg", np.zeros(DEFAULT_FRAME_SHAPE, dtype=np.uint8))[1]
+        dummy_b64 = base64.b64encode(dummy_frame).decode("utf-8")
         obs = {
-            "video.cam_head": base64.b64encode(
-                cv2.imencode(".jpg", np.zeros((720, 1280, 3), dtype=np.uint8))[1]
-            ).decode("utf-8"),
+            "video.cam_head": dummy_b64,
+            "video.cam_left_wrist": dummy_b64,
+            "video.cam_right_wrist": dummy_b64,
             "observation.state": np.random.rand(NUM_STATE_JOINTS).tolist(),
             "annotation.human.action.task_description": ["pick up the box from the roller table"],
         }

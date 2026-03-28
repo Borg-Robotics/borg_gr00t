@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-BORG robot extensions for NVIDIA Isaac GR00T N1.6. Standalone package that installs gr00t as a dependency (not a fork). Provides BORG-specific modality configs, inference scripts, and finetuning wrappers.
+BORG robot extensions for NVIDIA Isaac GR00T N1.6. Standalone package that installs gr00t as a dependency. Provides BORG-specific modality configs, inference scripts, and finetuning wrappers.
 
 ## Commands
 
@@ -12,16 +12,11 @@ make format              # ruff check --fix + ruff format
 
 # Lint & test
 make run-checks          # ruff check + ruff format --check + pytest
-
-# Install (after cloning Isaac-GR00T/ locally, it's gitignored)
-cd Isaac-GR00T && uv pip install setuptools wheel_stub && uv sync --no-build-isolation --no-install-project --active && uv pip install -e . --no-deps && cd -
-uv pip install -e ".[dev]"
 ```
 
 ## Code Style
 
 - **ruff**: line-length = 100, target py310, `__init__.py` ignores F401
-- ruff replaces black + isort
 
 ## Key Entry Points
 

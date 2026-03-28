@@ -20,11 +20,12 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import zmq
 from sklearn.metrics import mean_absolute_error
 from tqdm import tqdm
-import zmq
 
 NUM_JOINTS = 14  # 6 left arm + gripper + 6 right arm + gripper
+CAMERA_KEYS = ["cam_head", "cam_left_wrist", "cam_right_wrist"]
 
 
 def send_request_to_server(obs, port=5556, host="localhost"):
@@ -66,31 +67,49 @@ def flatten_action_dict(pred_action):
 
 def main(args):
     parquet_path = f"{args.dataset_path}/data/chunk-000/episode_{args.episode_id}.parquet"
-    video_path = (
-        f"{args.dataset_path}/videos/chunk-000/"
-        f"observation.images.cam_head/episode_{args.episode_id}.mp4"
-    )
+    video_dir = f"{args.dataset_path}/videos/chunk-000"
 
     df = pd.read_parquet(parquet_path)
     print(f"Loaded {len(df)} frames from parquet.")
 
-    cap = cv2.VideoCapture(video_path)
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    print(f"Loaded video: {total_frames} frames.")
+    # Open all 3 camera videos
+    caps = {}
+    total_frames = None
+    for cam_key in CAMERA_KEYS:
+        video_path = f"{video_dir}/observation.images.{cam_key}/episode_{args.episode_id}.mp4"
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            print(f"Warning: Could not open {video_path}")
+            continue
+        caps[cam_key] = cap
+        nf = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        print(f"Loaded {cam_key}: {nf} frames")
+        total_frames = nf if total_frames is None else min(total_frames, nf)
+
+    if not caps:
+        print("No camera videos found.")
+        return
 
     gt_actions = []
     pred_actions = []
 
     for i in tqdm(range(min(len(df), total_frames))):
-        ret, frame = cap.read()
-        if not ret:
+        # Read and encode all camera frames
+        obs = {}
+        skip = False
+        for cam_key, cap in caps.items():
+            ret, frame = cap.read()
+            if not ret:
+                skip = True
+                break
+            success, buffer = cv2.imencode(".jpg", frame)
+            if not success:
+                print(f"Failed to encode {cam_key} frame {i}")
+                skip = True
+                break
+            obs[f"video.{cam_key}"] = base64.b64encode(buffer).decode("utf-8")
+        if skip:
             break
-
-        success, buffer = cv2.imencode(".jpg", frame)
-        if not success:
-            print(f"Failed to encode frame {i}")
-            continue
-        frame_b64 = base64.b64encode(buffer).decode("utf-8")
 
         state = df["observation.state"].iloc[i]
         if isinstance(state, np.ndarray):
@@ -105,7 +124,7 @@ def main(args):
         else:
             raise TypeError(f"Unexpected state type at frame {i}: {type(state)}")
 
-        obs = {"video.cam_head": frame_b64, "observation.state": state_array}
+        obs["observation.state"] = state_array
 
         try:
             pred_action = send_request_to_server(obs, port=args.port, host=args.host)
@@ -116,7 +135,8 @@ def main(args):
             print(f"Error on frame {i}: {e}")
             break
 
-    cap.release()
+    for cap in caps.values():
+        cap.release()
 
     gt_actions = np.array(gt_actions)
     pred_actions = np.array(pred_actions)

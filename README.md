@@ -1,4 +1,4 @@
-# borg_gr00t
+# Borg GR00T
 
 BORG robot extensions for [NVIDIA Isaac GR00T N1.6](https://github.com/NVIDIA/Isaac-GR00T). This package provides BORG-specific modality configs, inference scripts, and finetuning wrappers without forking the upstream repo.
 
@@ -14,17 +14,16 @@ BORG robot extensions for [NVIDIA Isaac GR00T N1.6](https://github.com/NVIDIA/Is
 ### Local development
 
 ```bash
-# 1. Clone upstream Isaac-GR00T (into local directory, gitignored)
-git clone https://github.com/NVIDIA/Isaac-GR00T.git Isaac-GR00T
+git clone --recursive git@github.com:Borg-Robotics/borg_gr00t.git
 
-# 2. Install gr00t via uv sync (reads [tool.uv.sources] for correct torch/flash-attn wheels)
+uv venv
+source .venv/bin/activate
 cd Isaac-GR00T
 uv pip install setuptools wheel_stub
 uv sync --no-build-isolation --no-install-project --active
 uv pip install -e . --no-deps
-cd -
+cd ..
 
-# 3. Install borg_gr00t
 uv pip install -e ".[dev]"
 ```
 
@@ -37,7 +36,7 @@ python -c "from borg_gr00t.modality_config import BORG_MODALITY_CONFIG; print('O
 python -c "from borg_gr00t.embodiment import resolve_embodiment_tag; print(resolve_embodiment_tag('borg'))"
 ```
 
-### Docker (recommended for deployment)
+### Docker (recommended)
 
 ```bash
 docker compose -f docker/compose.yaml up --build -d
@@ -50,7 +49,7 @@ docker exec -it borg-gr00t bash
 
 ```bash
 python scripts/finetune.py \
-    --dataset-path /workspace/data/box_pickup_dataset \
+    --dataset-path ./data \
     --max-steps 500 \
     --output-dir /tmp/borg-finetune
 ```
@@ -86,9 +85,18 @@ python scripts/inference_server_zmq.py --client --port 5556
 
 ```bash
 python scripts/evaluate_replay.py \
-    --dataset-path /workspace/data/box_pickup_dataset \
+    --dataset-path ./data \
     --episode-id 000005 \
     --port 5556
+```
+
+### Evaluate offline (no server)
+
+```bash
+python scripts/evaluate_offline.py \
+    --model-path /tmp/borg-finetune \
+    --dataset-path ./data \
+    --episode-id 000000
 ```
 
 ## Architecture
@@ -104,7 +112,8 @@ borg_gr00t/
 │   ├── finetune.py         # Finetuning wrapper (calls upstream launch_finetune.py)
 │   ├── inference_service.py   # PolicyServer-based inference
 │   ├── inference_server_zmq.py # Raw ZMQ server for robot
-│   ├── evaluate_replay.py     # Replay evaluation
+│   ├── evaluate_replay.py     # Replay evaluation (requires running server)
+│   ├── evaluate_offline.py    # Offline evaluation (loads model directly)
 │   └── plot_actions.py        # Action visualization
 └── docker/              # Docker setup
 ```

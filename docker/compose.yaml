@@ -14,7 +14,7 @@ services:
     shm_size: "16gb"
 
     volumes:
-      - ../:/workspace
+      - ../:/borg_gr00t
 
     deploy:
       resources:

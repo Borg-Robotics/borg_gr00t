@@ -11,10 +11,10 @@ Usage::
         --output-dir /tmp/borg-finetune
 """
 
-from pathlib import Path
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 UPSTREAM_CANDIDATES = [
     Path("/opt/Isaac-GR00T"),  # Docker
@@ -107,9 +107,15 @@ def main():
         output_dir = _get_arg(all_args, "--output-dir")
         if output_dir:
             _copy_processor_files(base_model, output_dir)
-            from borg_gr00t.modality_config import inject_modality_config_into_checkpoint
+            from borg_gr00t.modality_config import (
+                inject_modality_config_into_checkpoint,
+                inject_statistics_into_checkpoint,
+            )
 
             inject_modality_config_into_checkpoint(output_dir)
+            dataset_path = _get_arg(all_args, "--dataset-path")
+            if dataset_path:
+                inject_statistics_into_checkpoint(output_dir, dataset_path)
 
     sys.exit(result.returncode)
 

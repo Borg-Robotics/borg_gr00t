@@ -26,23 +26,26 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 ENV UV_PROJECT_ENVIRONMENT=/opt/conda/
 
-# Clone upstream gr00t and install via uv sync (reads [tool.uv.sources])
-RUN git clone --depth 1 https://github.com/NVIDIA/Isaac-GR00T.git /opt/Isaac-GR00T
+# Clone upstream gr00t and install via uv sync
+COPY Isaac-GR00T /borg_gr00t/Isaac-GR00T
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --system setuptools wheel wheel-stub && \
-    cd /opt/Isaac-GR00T && \
-    uv sync --no-build-isolation --no-install-project && \
-    uv pip install --system -e /opt/Isaac-GR00T --no-deps
+    <<EOT
+uv pip install --system setuptools wheel wheel-stub
+cd /borg_gr00t/Isaac-GR00T
+uv sync --no-build-isolation --no-install-project
+uv pip install --system -e /borg_gr00t/Isaac-GR00T --no-deps
+uv pip install --system flash-attn --no-build-isolation
+EOT
 
+# Install borg_gr00t deps (cached unless pyproject.toml changes)
+COPY pyproject.toml /borg_gr00t/pyproject.toml
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --system flash-attn --no-build-isolation
+    touch /borg_gr00t/__init__.py && \
+    uv pip install --system -e "/borg_gr00t[dev]" --no-build-isolation
 
-# Install borg_gr00t
-COPY pyproject.toml /opt/borg_gr00t/pyproject.toml
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --system -e /opt/borg_gr00t --no-deps
-
-COPY . /opt/borg_gr00t
+# Copy source and re-register editable install (fast, no deps to fetch)
+COPY . /borg_gr00t
+RUN uv pip install --system -e /borg_gr00t --no-deps
 
 ENV PATH="/opt/conda/bin:${PATH}"
-WORKDIR /workspace
+WORKDIR /borg_gr00t
