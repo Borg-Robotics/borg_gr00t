@@ -40,7 +40,7 @@ python -c "from borg_gr00t.embodiment import resolve_embodiment_tag; print(resol
 ### Docker (recommended for deployment)
 
 ```bash
-docker compose -f docker/compose.yaml up --build
+docker compose -f docker/compose.yaml up --build -d
 docker exec -it borg-gr00t bash
 ```
 

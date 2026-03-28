@@ -16,6 +16,7 @@ import time
 
 from borg_gr00t.actions import relative_to_absolute
 from borg_gr00t.embodiment import resolve_embodiment_enum
+from borg_gr00t.modality_config import inject_modality_config_into_checkpoint
 import cv2
 from gr00t.policy.gr00t_policy import Gr00tPolicy
 import numpy as np
@@ -127,6 +128,7 @@ def main(args: ArgsConfig):
     tag_enum = resolve_embodiment_enum(args.embodiment_tag)
 
     if args.server:
+        inject_modality_config_into_checkpoint(args.model_path)
         policy = Gr00tPolicy(
             embodiment_tag=tag_enum,
             model_path=args.model_path,

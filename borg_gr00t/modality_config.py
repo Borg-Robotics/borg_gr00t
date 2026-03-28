@@ -98,3 +98,32 @@ BORG_MODALITY_CONFIG = {
 
 # Register on import so that finetuning picks it up automatically
 register_modality_config(BORG_MODALITY_CONFIG, EmbodimentTag.NEW_EMBODIMENT)
+
+
+def inject_modality_config_into_checkpoint(checkpoint_dir: str) -> None:
+    """Patch processor_config.json in a checkpoint to include the BORG modality config.
+
+    This is needed because finetuning saves processor configs from the base model,
+    which doesn't include custom embodiment configs. Call this after copying
+    processor files from the base model, or before loading a finetuned checkpoint.
+    """
+    import json
+    from pathlib import Path
+
+    from gr00t.data.utils import to_json_serializable
+
+    config_path = Path(checkpoint_dir) / "processor_config.json"
+    if not config_path.exists():
+        return
+
+    with open(config_path) as f:
+        config = json.load(f)
+
+    modality_configs = config.get("processor_kwargs", {}).get("modality_configs", {})
+    tag = EmbodimentTag.NEW_EMBODIMENT.value
+    if tag not in modality_configs:
+        modality_configs[tag] = to_json_serializable(BORG_MODALITY_CONFIG)
+        config.setdefault("processor_kwargs", {})["modality_configs"] = modality_configs
+        with open(config_path, "w") as f:
+            json.dump(config, f, indent=2)
+        print(f"Injected BORG modality config into {config_path}")

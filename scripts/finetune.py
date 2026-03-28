@@ -12,6 +12,7 @@ Usage::
 """
 
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 
@@ -32,6 +33,53 @@ def find_upstream():
     )
 
 
+PROCESSOR_FILES = [
+    "preprocessor_config.json",
+    "processor_config.json",
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "special_tokens_map.json",
+    "statistics.json",
+]
+
+
+def _resolve_base_model(path_or_repo: str) -> Path:
+    """Resolve a HuggingFace repo ID or local path to a directory."""
+    p = Path(path_or_repo)
+    if p.is_dir():
+        return p
+    from huggingface_hub import snapshot_download
+
+    return Path(snapshot_download(path_or_repo, local_files_only=True))
+
+
+def _copy_processor_files(base_model_path: str, output_dir: str):
+    """Copy processor/tokenizer files from the base model into the checkpoint."""
+    base = _resolve_base_model(base_model_path)
+    out = Path(output_dir)
+    if not out.is_dir():
+        return
+    copied = []
+    for fname in PROCESSOR_FILES:
+        src = base / fname
+        dst = out / fname
+        if src.exists() and not dst.exists():
+            shutil.copy2(src, dst)
+            copied.append(fname)
+    if copied:
+        print(f"Copied processor files to {out}: {', '.join(copied)}")
+
+
+def _get_arg(args: list[str], key: str, default: str | None = None) -> str | None:
+    """Extract the value for --key from an args list."""
+    for i, a in enumerate(args):
+        if a == key and i + 1 < len(args):
+            return args[i + 1]
+        if a.startswith(f"{key}="):
+            return a.split("=", 1)[1]
+    return default
+
+
 def main():
     script = find_upstream()
     modality_cfg = Path(__file__).resolve().parent.parent / "borg_gr00t" / "modality_config.py"
@@ -50,8 +98,20 @@ def main():
         if k not in user_keys:
             inject.extend([k, v])
 
-    cmd = [sys.executable, str(script)] + inject + user_args
-    sys.exit(subprocess.run(cmd).returncode)
+    all_args = inject + user_args
+    cmd = [sys.executable, str(script)] + all_args
+    result = subprocess.run(cmd)
+
+    if result.returncode == 0:
+        base_model = _get_arg(all_args, "--base-model-path", defaults["--base-model-path"])
+        output_dir = _get_arg(all_args, "--output-dir")
+        if output_dir:
+            _copy_processor_files(base_model, output_dir)
+            from borg_gr00t.modality_config import inject_modality_config_into_checkpoint
+
+            inject_modality_config_into_checkpoint(output_dir)
+
+    sys.exit(result.returncode)
 
 
 if __name__ == "__main__":
